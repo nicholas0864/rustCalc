@@ -120,12 +120,12 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
 }
 
 fn eval_expression(expr: &str) -> Result<f64, CalcError> {
-    let postfix = rpn(expr)?;
-    eval_pn(postfix)
+    let pf = rpn(expr)?;
+    eval_pn(pf)
 }
 
 fn main() {
-    println!("Advanced Calculator");
+    println!("calc");
     loop {
         let input = get_input("Enter an expression (or 'exit' to quit): ");
         if input.trim().eq_ignore_ascii_case("exit") {
