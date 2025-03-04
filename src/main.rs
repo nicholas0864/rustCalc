@@ -11,7 +11,6 @@ enum CalcError {
     UnbalancedParentheses,
 }
 
-// Operator precedence map
 fn precedence(op: &str) -> i32 {
     match op {
         "^" => 3,
@@ -21,7 +20,6 @@ fn precedence(op: &str) -> i32 {
     }
 }
 
-// Apply operator to two operands
 fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
     match op {
         "+" => Ok(a + b),
@@ -39,7 +37,6 @@ fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
     }
 }
 
-// Convert infix expression to postfix using Shunting-Yard algorithm
 fn infix_to_postfix(expr: &str) -> Result<VecDeque<String>, CalcError> {
     let mut output = VecDeque::new();
     let mut operators = Vec::new();
@@ -77,7 +74,6 @@ fn infix_to_postfix(expr: &str) -> Result<VecDeque<String>, CalcError> {
     Ok(output)
 }
 
-// Evaluate a postfix expression
 fn evaluate_postfix(tokens: VecDeque<String>) -> Result<f64, CalcError> {
     let mut stack = Vec::new();
 
@@ -96,7 +92,6 @@ fn evaluate_postfix(tokens: VecDeque<String>) -> Result<f64, CalcError> {
     stack.pop().ok_or(CalcError::InvalidInput)
 }
 
-// Tokenizer to handle numbers, operators, and parentheses
 fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
     let allowed_chars: HashSet<char> = "0123456789.+-*/^() ".chars().collect();
     let mut tokens = Vec::new();
