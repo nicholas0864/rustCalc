@@ -1,7 +1,7 @@
 use std::io;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
+use std::str::FromStr;
 
-// Enum for more robust error handling
 #[derive(Debug)]
 enum CalcError {
     InvalidInput,
@@ -11,183 +11,141 @@ enum CalcError {
     UnbalancedParentheses,
 }
 
-// Improved input validation
-fn validate_input(input: &str) -> Result<(), CalcError> {
-    // Allowed characters set
-    let allowed_chars: HashSet<char> = 
-        "0123456789.+-*/^() ".chars().collect(); //allowed chars, all math and letters
-    
-    let mut paren_count = 0; // balances parenthesis by adding for opening and lowering for a closing one
-    for c in input.chars() {
+// Operator precedence map
+fn precedence(op: &str) -> i32 {
+    match op {
+        "^" => 3,
+        "*" | "/" => 2,
+        "+" | "-" => 1,
+        _ => 0,
+    }
+}
+
+// Apply operator to two operands
+fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
+    match op {
+        "+" => Ok(a + b),
+        "-" => Ok(a - b),
+        "*" => Ok(a * b),
+        "/" => {
+            if b == 0.0 {
+                Err(CalcError::DivisionByZero)
+            } else {
+                Ok(a / b)
+            }
+        }
+        "^" => Ok(a.powf(b)),
+        _ => Err(CalcError::InvalidInput),
+    }
+}
+
+// Convert infix expression to postfix using Shunting-Yard algorithm
+fn infix_to_postfix(expr: &str) -> Result<VecDeque<String>, CalcError> {
+    let mut output = VecDeque::new();
+    let mut operators = Vec::new();
+    let tokens = tokenize(expr)?;
+
+    for token in tokens {
+        if let Ok(_) = f64::from_str(&token) {
+            output.push_back(token);
+        } else if token == "(" {
+            operators.push(token);
+        } else if token == ")" {
+            while let Some(op) = operators.pop() {
+                if op == "(" {
+                    break;
+                }
+                output.push_back(op);
+            }
+        } else {
+            while let Some(op) = operators.last() {
+                if precedence(op) >= precedence(&token) {
+                    output.push_back(operators.pop().unwrap());
+                } else {
+                    break;
+                }
+            }
+            operators.push(token);
+        }
+    }
+    while let Some(op) = operators.pop() {
+        if op == "(" || op == ")" {
+            return Err(CalcError::UnbalancedParentheses);
+        }
+        output.push_back(op);
+    }
+    Ok(output)
+}
+
+// Evaluate a postfix expression
+fn evaluate_postfix(tokens: VecDeque<String>) -> Result<f64, CalcError> {
+    let mut stack = Vec::new();
+
+    for token in tokens {
+        if let Ok(num) = f64::from_str(&token) {
+            stack.push(num);
+        } else {
+            if stack.len() < 2 {
+                return Err(CalcError::InvalidInput);
+            }
+            let b = stack.pop().unwrap();
+            let a = stack.pop().unwrap();
+            stack.push(apply_operator(a, b, &token)?);
+        }
+    }
+    stack.pop().ok_or(CalcError::InvalidInput)
+}
+
+// Tokenizer to handle numbers, operators, and parentheses
+fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
+    let allowed_chars: HashSet<char> = "0123456789.+-*/^() ".chars().collect();
+    let mut tokens = Vec::new();
+    let mut num = String::new();
+
+    for c in expr.chars() {
         if !allowed_chars.contains(&c) {
             return Err(CalcError::InvalidInput);
         }
-        
-        if c == '(' {
-            paren_count += 1;
-        } else if c == ')' {
-            paren_count -= 1;
-        }
-        
-        if paren_count < 0 {
-            return Err(CalcError::UnbalancedParentheses);
-        }
-    }
-    
-    if paren_count != 0 {
-        return Err(CalcError::UnbalancedParentheses);
-    }
-    
-    Ok(())
-}
-
-// More robust error handling for parsing
-fn parse_number(token: &str) -> Result<f64, CalcError> {
-    token.parse::<f64>().map_err(|_| CalcError::ParseError)
-}
-
-// Improved operator precedence and handling
-fn apply_operator(nums: &mut Vec<f64>, ops: &mut Vec<String>) -> Result<(), CalcError> {
-    if nums.is_empty() || ops.is_empty() {
-        return Err(CalcError::InvalidInput);
-    }
-
-    let op = ops.pop().unwrap();
-    match op.as_str() {
-        "sqrt" => {
-            let a = nums.pop().ok_or(CalcError::InvalidInput)?;
-            if a < 0.0 {
-                return Err(CalcError::SqrtNegative);
+        if c.is_digit(10) || c == '.' {
+            num.push(c);
+        } else {
+            if !num.is_empty() {
+                tokens.push(num.clone());
+                num.clear();
             }
-            nums.push(a.sqrt());
-        },
-        "+" | "-" | "*" | "/" | "^" => {
-            if nums.len() < 2 {
-                return Err(CalcError::InvalidInput);
+            if c != ' ' {
+                tokens.push(c.to_string());
             }
-            
-            let b = nums.pop().unwrap();
-            let a = nums.pop().unwrap();
-            
-            let result = match op.as_str() {
-                "^" => f64::powf(a, b),
-                "+" => a + b,
-                "-" => a - b,
-                "*" => a * b,
-                "/" => {
-                    if b == 0.0 {
-                        return Err(CalcError::DivisionByZero);
-                    }
-                    a / b
-                },
-                _ => unreachable!(),
-            };
-
-            nums.push(result);
-        },
-        _ => return Err(CalcError::InvalidInput),
+        }
     }
-    
-    Ok(())
+    if !num.is_empty() {
+        tokens.push(num);
+    }
+    Ok(tokens)
 }
 
-// expression validation
 fn eval_expression(expr: &str) -> Result<f64, CalcError> {
-    
-    validate_input(expr)?;
-
-    let mut nums: Vec<f64> = Vec::new();
-    let mut ops: Vec<String> = Vec::new();
-    let mut i = 0;
-    let chars: Vec<char> = expr.chars().collect();
-
-    while i < chars.len() {
-       
-        if chars[i].is_whitespace() {
-            i += 1;
-            continue;
-        }
-
-        //if char is a digit or decimal point or minus 
-        if chars[i].is_digit(10) || chars[i] == '.' || 
-           (chars[i] == '-' && (i == 0 || "+-*/^(".contains(chars[i-1]))) {
-            let mut num_str = String::new();
-            //if negative, num is neg
-            if chars[i] == '-' {
-                num_str.push('-');
-                i += 1;
-            }
-
-            //parse digits and decimals
-            while i < chars.len() && (chars[i].is_digit(10) || chars[i] == '.') {
-                num_str.push(chars[i]);
-                i += 1;
-            }
-
-            let num = parse_number(&num_str)?;
-            nums.push(num);
-        }
-        // if op, push the opp
-        else if "+-*/^".contains(chars[i]) {
-            ops.push(chars[i].to_string());
-            i += 1;
-        }
-        // handle sqrt
-        else if i + 3 < chars.len() && &expr[i..i+4] == "sqrt" {
-            ops.push("sqrt".to_string());
-            i += 4;
-        }
-        else {
-            return Err(CalcError::InvalidInput);
-        }
-    }
-
-    
-    while !ops.is_empty() {
-        apply_operator(&mut nums, &mut ops)?;
-    }
-
-    // return result
-    nums.first()
-        .cloned()
-        .ok_or(CalcError::InvalidInput)
+    let postfix = infix_to_postfix(expr)?;
+    evaluate_postfix(postfix)
 }
 
-// Main function with improved error handling
 fn main() {
     println!("Advanced Calculator");
     loop {
         let input = get_input("Enter an expression (or 'exit' to quit): ");
-        
-        if input.trim().eq_ignore_ascii_case("exit") { 
+        if input.trim().eq_ignore_ascii_case("exit") {
             break;
         }
-
-        match eval_expression(&input) { // error net, i lowkey dk how this works
+        match eval_expression(&input) {
             Ok(result) => println!("Result: {}", result),
-            Err(err) => match err {
-                CalcError::InvalidInput => 
-                    println!("Invalid input. Please check your expression."),
-                CalcError::DivisionByZero => 
-                    println!("Error: Division by zero is not allowed."),
-                CalcError::ParseError => 
-                    println!("Error: Could not parse the number."),
-                CalcError::SqrtNegative => 
-                    println!("Error: Cannot calculate square root of a negative number."),
-                CalcError::UnbalancedParentheses => 
-                    println!("Error: Unbalanced parentheses in the expression."),
-            }
+            Err(err) => println!("Error: {:?}", err),
         }
     }
 }
 
-// Input function remains mostly the same
 fn get_input(prompt: &str) -> String {
-
     println!("{}", prompt);
-    
     let mut input = String::new();
     io::stdin().read_line(&mut input).expect("Failed to read line");
-
     input.trim().to_string()
 }
