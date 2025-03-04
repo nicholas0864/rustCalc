@@ -68,7 +68,7 @@ fn eval_prob(problem: &str) -> String {
             continue;
         }
         
-        if "+-*/".contains(chars[i]) {
+        if "+-*/^".contains(chars[i]) {
             tokens.push(chars[i].to_string());
             i += 1;
         } else if chars[i].is_digit(10) || chars[i] == '.' || (chars[i] == '-' && (i == 0 || !chars[i-1].is_digit(10))) {
@@ -90,7 +90,7 @@ fn eval_prob(problem: &str) -> String {
     for token in tokens {
         if let Ok(num) = token.parse::<f64>() {
             nums.push(num);
-        } else if "+-*/".contains(&token) {
+        } else if "+-*/^".contains(&token) {
             while !ops.is_empty() && precedence(ops.last().unwrap()) >= precedence(&token) {
                 apply_operator(&mut nums, &mut ops);
             }
@@ -116,6 +116,7 @@ fn precedence(op: &str) -> i32 {
     match op {
         "+" | "-" => 1,
         "*" | "/" => 2,
+        "^"       => 3,
         _ => 0,
     }
 }
@@ -129,6 +130,7 @@ fn apply_operator(nums: &mut Vec<f64>, ops: &mut Vec<String>) {
     let op = ops.pop().unwrap();
 
     let result = match op.as_str() {
+        "^" => f64::powf(a, b),
         "+" => a + b,
         "-" => a - b,
         "*" => a * b,
