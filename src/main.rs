@@ -37,8 +37,8 @@ fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
     }
 }
 
-fn infix_to_postfix(expr: &str) -> Result<VecDeque<String>, CalcError> {
-    let mut output = VecDeque::new();
+fn rpn(expr: &str) -> Result<VecDeque<String>, CalcError> {
+    let mut output: VecDeque<String> = VecDeque::new();
     let mut operators = Vec::new();
     let tokens = tokenize(expr)?;
 
@@ -74,7 +74,7 @@ fn infix_to_postfix(expr: &str) -> Result<VecDeque<String>, CalcError> {
     Ok(output)
 }
 
-fn evaluate_postfix(tokens: VecDeque<String>) -> Result<f64, CalcError> {
+fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
     let mut stack = Vec::new();
 
     for token in tokens {
@@ -120,8 +120,8 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
 }
 
 fn eval_expression(expr: &str) -> Result<f64, CalcError> {
-    let postfix = infix_to_postfix(expr)?;
-    evaluate_postfix(postfix)
+    let postfix = rpn(expr)?;
+    eval_pn(postfix)
 }
 
 fn main() {
