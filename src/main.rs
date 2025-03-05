@@ -6,13 +6,12 @@ use std::str::FromStr;
 enum CalcError {
     InvalidInput,
     DivisionByZero,
-    ParseError,
-    SqrtNegative,
     UnbalancedParentheses,
 }
 
 fn precedence(op: &str) -> i32 {
     match op {
+        "sqrt" => 4,
         "^" => 3,
         "*" | "/" => 2,
         "+" | "-" => 1,
@@ -80,6 +79,15 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
     for token in tokens {
         if let Ok(num) = f64::from_str(&token) {
             stack.push(num);
+        } else if token == "√" || token == "sqrt" {
+            if stack.is_empty() {
+                return Err(CalcError::InvalidInput);
+            }
+            let a = stack.pop().unwrap();
+            if a < 0.0 {
+                return Err(CalcError::InvalidInput); 
+            }
+            stack.push(a.sqrt());
         } else {
             if stack.len() < 2 {
                 return Err(CalcError::InvalidInput);
@@ -92,15 +100,31 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
     stack.pop().ok_or(CalcError::InvalidInput)
 }
 
+
 fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
-    let allowed_chars: HashSet<char> = "0123456789.+-*/^() ".chars().collect();
+    let allowed_chars: HashSet<char> = "0123456789.+-*/^() abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut tokens = Vec::new();
     let mut num = String::new();
-
-    for c in expr.chars() {
+    let mut i = 0;
+    let chars: Vec<char> = expr.chars().collect();
+    
+    while i < chars.len() {
+        let c = chars[i];
         if !allowed_chars.contains(&c) {
             return Err(CalcError::InvalidInput);
         }
+        
+        if c == 's' && i + 3 < chars.len() && 
+           chars[i+1] == 'q' && chars[i+2] == 'r' && chars[i+3] == 't' {
+            if !num.is_empty() {
+                tokens.push(num.clone());
+                num.clear();
+            }
+            tokens.push("sqrt".to_string());
+            i += 4;
+            continue;
+        }
+        
         if c.is_digit(10) || c == '.' {
             num.push(c);
         } else {
@@ -112,10 +136,13 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
                 tokens.push(c.to_string());
             }
         }
+        i += 1;
     }
+    
     if !num.is_empty() {
         tokens.push(num);
     }
+    
     Ok(tokens)
 }
 
