@@ -26,7 +26,7 @@ fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
         "*" => Ok(a * b),
         "/" => {
             if b == 0.0 {
-                Err(CalcError::DivisionByZero)
+                Err(CalcError::InvalidInput) 
             } else {
                 Ok(a / b)
             }
@@ -80,12 +80,9 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
         if let Ok(num) = f64::from_str(&token) {
             stack.push(num);
         } else if token == "√" || token == "sqrt" {
-            if stack.is_empty() {
-                return Err(CalcError::InvalidInput);
-            }
-            let a = stack.pop().unwrap();
+            let a = stack.pop().ok_or(CalcError::InvalidInput)?; // Prevent panic
             if a < 0.0 {
-                return Err(CalcError::InvalidInput); 
+                return Err(CalcError::InvalidInput);
             }
             stack.push(a.sqrt());
         } else {
@@ -97,25 +94,31 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
             stack.push(apply_operator(a, b, &token)?);
         }
     }
-    stack.pop().ok_or(CalcError::InvalidInput)
+
+    // Ensure exactly one result remains
+    if stack.len() == 1 {
+        stack.pop().ok_or(CalcError::InvalidInput)
+    } else {
+        Err(CalcError::InvalidInput)
+    }
 }
 
 
 fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
-    let allowed_chars: HashSet<char> = "0123456789.+-*/^() abcdefghijklmnopqrstuvwxyz".chars().collect();
+    let allowed_chars: HashSet<char> = "0123456789.+-*/^()√ abcdefghijklmnopqrstuvwxyz".chars().collect();
     let mut tokens = Vec::new();
     let mut num = String::new();
     let mut i = 0;
     let chars: Vec<char> = expr.chars().collect();
-    
+
     while i < chars.len() {
         let c = chars[i];
+
         if !allowed_chars.contains(&c) {
             return Err(CalcError::InvalidInput);
         }
-        
-        if c == 's' && i + 3 < chars.len() && 
-           chars[i+1] == 'q' && chars[i+2] == 'r' && chars[i+3] == 't' {
+
+        if c == 's' && i + 3 < chars.len() && &chars[i..i+4] == ['s', 'q', 'r', 't'] {
             if !num.is_empty() {
                 tokens.push(num.clone());
                 num.clear();
@@ -124,7 +127,7 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
             i += 4;
             continue;
         }
-        
+
         if c.is_digit(10) || c == '.' {
             num.push(c);
         } else {
@@ -138,11 +141,11 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
         }
         i += 1;
     }
-    
+
     if !num.is_empty() {
         tokens.push(num);
     }
-    
+
     Ok(tokens)
 }
 
