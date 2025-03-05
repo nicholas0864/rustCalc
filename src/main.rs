@@ -26,7 +26,7 @@ fn apply_operator(a: f64, b: f64, op: &str) -> Result<f64, CalcError> {
         "*" => Ok(a * b),
         "/" => {
             if b == 0.0 {
-                Err(CalcError::InvalidInput) 
+                Err(CalcError::DivisionByZero) 
             } else {
                 Ok(a / b)
             }
@@ -145,7 +145,7 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
     if !num.is_empty() {
         tokens.push(num);
     }
-
+    println!("{:?}", tokens);
     Ok(tokens)
 }
 
