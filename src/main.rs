@@ -11,7 +11,7 @@ enum CalcError {
 
 fn precedence(op: &str) -> i32 {
     match op {
-        "sin" => 5,
+        "sin" | "tan" | "cos" => 5,
         "sqrt" => 4,
         "^" => 3,
         "*" | "/" => 2,
@@ -89,6 +89,12 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
         } else if token == "sin" {
             let a = stack.pop().ok_or(CalcError::InvalidInput)?; // Prevent panic
             stack.push(a.sin());
+        }else if token == "cos" {
+            let a = stack.pop().ok_or(CalcError::InvalidInput)?; // Prevent panic
+            stack.push(a.cos());
+        } else if token == "tan" {
+            let a = stack.pop().ok_or(CalcError::InvalidInput)?; // Prevent panic
+            stack.push(a.tan());
         } 
         else {
             if stack.len() < 2 {
@@ -131,12 +137,30 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
             tokens.push("sqrt".to_string());
             i += 4;
             continue;
-        }if c == 's' && i + 2 < chars.len() && &chars[i..i+4] == ['s', 'i', 'n'] {
+        }if c == 's' && i + 2 < chars.len() && &chars[i..i+3] == ['s', 'i', 'n'] {
             if !num.is_empty() {
                 tokens.push(num.clone());
                 num.clear();
             }
             tokens.push("sin".to_string());
+            i += 3;
+            continue;
+        }
+        if c == 'c' && i + 2 < chars.len() && &chars[i..i+3] == ['c', 'o', 's'] {
+            if !num.is_empty() {
+                tokens.push(num.clone());
+                num.clear();
+            }
+            tokens.push("cos".to_string());
+            i += 3;
+            continue;
+        }
+        if c == 't' && i + 2 < chars.len() && &chars[i..i+3] == ['t', 'a', 'n'] {
+            if !num.is_empty() {
+                tokens.push(num.clone());
+                num.clear();
+            }
+            tokens.push("tan".to_string());
             i += 3;
             continue;
         }
