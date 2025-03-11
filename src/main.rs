@@ -11,6 +11,7 @@ enum CalcError {
 
 fn precedence(op: &str) -> i32 {
     match op {
+        "sin" => 5,
         "sqrt" => 4,
         "^" => 3,
         "*" | "/" => 2,
@@ -85,7 +86,11 @@ fn eval_pn(tokens: VecDeque<String>) -> Result<f64, CalcError> {
                 return Err(CalcError::InvalidInput);
             }
             stack.push(a.sqrt());
-        } else {
+        } else if token == "sin" {
+            let a = stack.pop().ok_or(CalcError::InvalidInput)?; // Prevent panic
+            stack.push(a.sin());
+        } 
+        else {
             if stack.len() < 2 {
                 return Err(CalcError::InvalidInput);
             }
@@ -125,6 +130,14 @@ fn tokenize(expr: &str) -> Result<Vec<String>, CalcError> {
             }
             tokens.push("sqrt".to_string());
             i += 4;
+            continue;
+        }if c == 's' && i + 2 < chars.len() && &chars[i..i+4] == ['s', 'i', 'n'] {
+            if !num.is_empty() {
+                tokens.push(num.clone());
+                num.clear();
+            }
+            tokens.push("sin".to_string());
+            i += 3;
             continue;
         }
 
